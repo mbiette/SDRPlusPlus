@@ -54,101 +54,101 @@ add_subdirectory("core")
 
 # Source modules
 if (OPT_BUILD_AIRSPY_SOURCE)
-add_subdirectory("airspy_source")
+add_subdirectory("modules/sources/airspy_source")
 endif (OPT_BUILD_AIRSPY_SOURCE)
 
 if (OPT_BUILD_AIRSPYHF_SOURCE)
-add_subdirectory("airspyhf_source")
+add_subdirectory("modules/sources/airspyhf_source")
 endif (OPT_BUILD_AIRSPYHF_SOURCE)
 
 if (OPT_BUILD_BLADERF_SOURCE)
-add_subdirectory("bladerf_source")
+add_subdirectory("modules/sources/bladerf_source")
 endif (OPT_BUILD_BLADERF_SOURCE)
 
 if (OPT_BUILD_FILE_SOURCE)
-add_subdirectory("file_source")
+add_subdirectory("modules/sources/file_source")
 endif (OPT_BUILD_FILE_SOURCE)
 
 if (OPT_BUILD_HACKRF_SOURCE)
-add_subdirectory("hackrf_source")
+add_subdirectory("modules/sources/hackrf_source")
 endif (OPT_BUILD_HACKRF_SOURCE)
 
 if (OPT_BUILD_LIMESDR_SOURCE)
-add_subdirectory("limesdr_source")
+add_subdirectory("modules/sources/limesdr_source")
 endif (OPT_BUILD_LIMESDR_SOURCE)
 
 if (OPT_BUILD_SDDC_SOURCE)
-add_subdirectory("sddc_source")
+add_subdirectory("modules/sources/sddc_source")
 endif (OPT_BUILD_SDDC_SOURCE)
 
 if (OPT_BUILD_RTL_SDR_SOURCE)
-add_subdirectory("rtl_sdr_source")
+add_subdirectory("modules/sources/rtl_sdr_source")
 endif (OPT_BUILD_RTL_SDR_SOURCE)
 
 if (OPT_BUILD_RTL_TCP_SOURCE)
-add_subdirectory("rtl_tcp_source")
+add_subdirectory("modules/sources/rtl_tcp_source")
 endif (OPT_BUILD_RTL_TCP_SOURCE)
 
 if (OPT_BUILD_SDRPLAY_SOURCE)
-add_subdirectory("sdrplay_source")
+add_subdirectory("modules/sources/sdrplay_source")
 endif (OPT_BUILD_SDRPLAY_SOURCE)
 
 if (OPT_BUILD_SOAPY_SOURCE)
-add_subdirectory("soapy_source")
+add_subdirectory("modules/sources/soapy_source")
 endif (OPT_BUILD_SOAPY_SOURCE)
 
 if (OPT_BUILD_SPYSERVER_SOURCE)
-add_subdirectory("spyserver_source")
+add_subdirectory("modules/sources/spyserver_source")
 endif (OPT_BUILD_SPYSERVER_SOURCE)
 
 if (OPT_BUILD_PLUTOSDR_SOURCE)
-add_subdirectory("plutosdr_source")
+add_subdirectory("modules/sources/plutosdr_source")
 endif (OPT_BUILD_PLUTOSDR_SOURCE)
 
 
 # Sink modules
 if (OPT_BUILD_AUDIO_SINK)
-add_subdirectory("audio_sink")
+add_subdirectory("modules/sinks/audio_sink")
 endif (OPT_BUILD_AUDIO_SINK)
 
 if (OPT_BUILD_DEV_PORTAUDIO_SINK)
-add_subdirectory("dev_portaudio_sink")
+add_subdirectory("modules/sinks/dev_portaudio_sink")
 endif (OPT_BUILD_DEV_PORTAUDIO_SINK)
 
 if (OPT_BUILD_PORTAUDIO_SINK)
-add_subdirectory("portaudio_sink")
+add_subdirectory("modules/sinks/portaudio_sink")
 endif (OPT_BUILD_PORTAUDIO_SINK)
 
 
 # Decoders
 if (OPT_BUILD_FALCON9_DECODER)
-add_subdirectory("falcon9_decoder")
+add_subdirectory("modules/decoders/falcon9_decoder")
 endif (OPT_BUILD_FALCON9_DECODER)
 
 if (OPT_BUILD_METEOR_DEMODULATOR)
-add_subdirectory("meteor_demodulator")
+add_subdirectory("modules/decoders/meteor_demodulator")
 endif (OPT_BUILD_METEOR_DEMODULATOR)
 
 if (OPT_BUILD_RADIO)
-add_subdirectory("radio")
+add_subdirectory("modules/decoders/radio")
 endif (OPT_BUILD_RADIO)
 
 if (OPT_BUILD_WEATHER_SAT_DECODER)
-add_subdirectory("weather_sat_decoder")
+add_subdirectory("modules/decoders/weather_sat_decoder")
 endif (OPT_BUILD_WEATHER_SAT_DECODER)
 
 
 # Misc
 if (OPT_BUILD_DISCORD_PRESENCE)
-add_subdirectory("discord_integration")
+add_subdirectory("modules/misc/discord_integration")
 endif (OPT_BUILD_DISCORD_PRESENCE)
 
 if (OPT_BUILD_FREQUENCY_MANAGER)
-add_subdirectory("frequency_manager")
+add_subdirectory("modules/misc/frequency_manager")
 endif (OPT_BUILD_FREQUENCY_MANAGER)
 
 if (OPT_BUILD_RECORDER)
-add_subdirectory("recorder")
+add_subdirectory("modules/misc/recorder")
 endif (OPT_BUILD_RECORDER)
 
 if (OPT_BUILD_RIGCTL_SERVER)

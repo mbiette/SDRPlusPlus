@@ -9,7 +9,7 @@ else ()
     set(CMAKE_CXX_FLAGS "-O3 -std=c++17")
 endif ()
 
-include_directories("src/" "../radio/src")
+include_directories("src/" "../../decoders/radio/src")
 
 file(GLOB SRC "src/*.cpp")
 

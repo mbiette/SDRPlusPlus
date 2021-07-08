@@ -119,11 +119,11 @@ As mentioned previously you need to edit `root_dev/config.json` to add the modul
 ```json
 ...
 "modules": [
-    "./build/radio/Release/radio.dll",
-    "./build/recorder/Release/recorder.dll",
-    "./build/rtl_tcp_source/Release/rtl_tcp_source.dll",
-    "./build/soapy_source/Release/soapy_source.dll",
-    "./build/audio_sink/Release/audio_sink.dll"
+    "./build/modules/decoders/radio/Release/radio.dll",
+    "./build/modules/misc/recorder/Release/recorder.dll",
+    "./build/modules/sources/rtl_tcp_source/Release/rtl_tcp_source.dll",
+    "./build/modules/sources/soapy_source/Release/soapy_source.dll",
+    "./build/nodules/sinks/audio_sink/Release/audio_sink.dll"
 ]
 ...
 ```
@@ -149,14 +149,15 @@ Next you need to copy over all the modules that were compiled. To do so, copy th
 
 The modules built will be some of the following (Repeat the instructions above for all you wish to use):
 
-* `build/radio/Release/`
-* `build/recorder/Release/`
-* `build/rtl_tcp_source/Release/`
-* `build/spyserver_source/Release/`
-* `build/soapy_source/Release/`
-* `build/airspyhf_source/Release/`
-* `build/plutosdr_source/Release/`
-* `build/audio_sink/Release/`
+* `build/modules/decoders/radio/Release/`
+* `build/modules/misc/recorder/Release/`
+* `build/modules/sources/rtl_tcp_source/Release/`
+* `build/modules/sources/spyserver_source/Release/`
+* `build/modules/sources/soapy_source/Release/`
+* `build/modules/sources/airspyhf_source/Release/`
+* `build/modules/sources/plutosdr_source/Release/`
+* `build/modules/sinks/audio_sink/Release/`
+
 
 # Building on Linux / BSD
 
@@ -216,11 +217,11 @@ Then, you will need to edit the `root_dev/config.json` file to point to the modu
 ```json
 ...
 "modules": [
-    "./build/radio/radio.so",
-    "./build/recorder/recorder.so",
-    "./build/rtl_tcp_source/rtl_tcp_source.so",
-    "./build/soapy_source/soapy_source.so",
-    "./build/audio_sink/audio_sink.so"
+    "./build/modules/decoders/radio/radio.so",
+    "./build/modules/misc/recorder/recorder.so",
+    "./build/modules/sources/rtl_tcp_source/rtl_tcp_source.so",
+    "./build/modules/sources/soapy_source/soapy_source.so",
+    "./build/modules/sinks/audio_sink/audio_sink.so"
 ]
 ...
 ```
