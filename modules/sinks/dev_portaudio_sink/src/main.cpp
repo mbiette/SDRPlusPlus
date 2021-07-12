@@ -239,23 +239,23 @@ private:
     SinkManager::SinkProvider provider;
 };
 
-MOD_EXPORT void _INIT_() {
+MOD_EXPORT void SDRPP_MOD_INIT() {
     json def = json({});
     config.setPath(options::opts.root + "/dev_portaudio_sink_config.json");
     config.load(def);
     config.enableAutoSave();
 }
 
-MOD_EXPORT void* _CREATE_INSTANCE_(std::string name) {
+MOD_EXPORT void* SDRPP_MOD_CREATE_INSTANCE(std::string name) {
     auto instance = new PortaudioSinkModule(std::move(name));
     return instance;
 }
 
-MOD_EXPORT void _DELETE_INSTANCE_(void* instance) {
+MOD_EXPORT void SDRPP_MOD_DELETE_INSTANCE(void* instance) {
     delete static_cast<PortaudioSinkModule *>(instance);
 }
 
-MOD_EXPORT void _END_() {
+MOD_EXPORT void SDRPP_MOD_END() {
     config.disableAutoSave();
     config.save();
 }
