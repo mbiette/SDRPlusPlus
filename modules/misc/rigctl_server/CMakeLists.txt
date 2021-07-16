@@ -11,7 +11,7 @@ endif ()
 
 file(GLOB SRC "src/*.cpp")
 
-include_directories("src/")
+include_directories("src")
 include_directories("../recorder/src")
 
 add_library(rigctl_server SHARED ${SRC})

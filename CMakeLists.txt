@@ -152,7 +152,7 @@ add_subdirectory("modules/misc/recorder")
 endif (OPT_BUILD_RECORDER)
 
 if (OPT_BUILD_RIGCTL_SERVER)
-add_subdirectory("rigctl_server")
+add_subdirectory("modules/misc/rigctl_server")
 endif (OPT_BUILD_RIGCTL_SERVER)
 
 add_executable(sdrpp "src/main.cpp" "win32/resources.rc")
