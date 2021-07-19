@@ -32,17 +32,45 @@ PortaudioInterface::~PortaudioInterface() {
     }
 }
 
+int PortaudioInterface::getDefaultDeviceId() {
+    return Pa_GetDefaultOutputDevice();
+}
+
 std::vector<AudioDevice_t> PortaudioInterface::getDeviceList() {
     std::vector<AudioDevice_t> devices;
 
     auto numDevices = Pa_GetDeviceCount();
+
     for(int deviceId = 0; deviceId < numDevices ; deviceId++) {
         const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(deviceId);
         if (deviceInfo->maxOutputChannels < 1) {
             continue;
         }
+        spdlog::info("*******\ndeviceId\t{10}\nstructVersion\t{0}\nname\t{1}\nhostApi\t{2}\nmaxInputChannels\t{3}\n"
+                     "maxOutputChannels\t{4}\ndefaultLowInputLatency\t{5}\ndefaultLowOutputLatency\t{6}\n"
+                     "defaultHighInputLatency\t{7}\ndefaultHighOutputLatency\t{8}\ndefaultSampleRate\t{9}",
+                     deviceInfo->structVersion,
+                     deviceInfo->name,
+                     deviceInfo->hostApi,
+                     deviceInfo->maxInputChannels,
+                     deviceInfo->maxOutputChannels,
+                     deviceInfo->defaultLowInputLatency,
+                     deviceInfo->defaultLowOutputLatency,
+                     deviceInfo->defaultHighInputLatency,
+                     deviceInfo->defaultHighOutputLatency,
+                     deviceInfo->defaultSampleRate,
+                     deviceId);
+        const PaHostApiInfo *hostApiInfo = Pa_GetHostApiInfo(deviceInfo->hostApi);
+        spdlog::info("structVersion\t{0}\ntype\t{1}\nname\t{2}\ndeviceCount\t{3}\n"
+                     "defaultInputDevice\t{4}\ndefaultOutputDevice\t{5}",
+                     hostApiInfo->structVersion,
+                     hostApiInfo->type,
+                     hostApiInfo->name,
+                     hostApiInfo->deviceCount,
+                     hostApiInfo->defaultInputDevice,
+                     hostApiInfo->defaultOutputDevice);
         AudioDevice_t dev{
-                deviceInfo->name,
+                std::string(hostApiInfo->name).append(" - ").append(deviceInfo->name),
                 deviceId,
                 std::min<int>(deviceInfo->maxOutputChannels, 2)};
         dev.sampleRates = std::move(getValidSampleRates(dev.channels, deviceId, deviceInfo->defaultLowOutputLatency));
@@ -74,7 +102,7 @@ std::vector<float> PortaudioInterface::getValidSampleRates(int channelCount, int
 }
 
 template<typename BufferT, typename AudioObjectT>
-int PortaudioInterface::call_back(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
+int PortaudioStream::call_back(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
                                   const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags,
                                   void *userData) noexcept
 {
@@ -87,6 +115,7 @@ int PortaudioInterface::call_back(const void *inputBuffer, void *outputBuffer, u
 
     memcpy(outputBuffer, buffer->readBuf, framesPerBuffer * sizeof(AudioObjectT));
     buffer->flush();
+
     if (statusFlags & paOutputUnderflow) spdlog::warn("PortAudio underflow (read count: {0}, frames: {1})", count, framesPerBuffer);
     if (statusFlags & paOutputOverflow) spdlog::warn("PortAudio overflow");
     if (statusFlags & paPrimingOutput) spdlog::warn("PortAudio priming");
@@ -97,7 +126,7 @@ int PortaudioInterface::call_back(const void *inputBuffer, void *outputBuffer, u
 }
 
 template<typename BufferT, typename AudioObjectT>
-bool PortaudioInterface::open(const AudioDevice_t &device, BufferT *buffer, float sampleRate) {
+bool PortaudioStream::open(const AudioDevice_t &device, BufferT *buffer, float sampleRate) {
     PaStreamParameters outputParams;
     auto deviceInfo = Pa_GetDeviceInfo(device.deviceId);
     outputParams.channelCount = device.channels;
@@ -106,6 +135,7 @@ bool PortaudioInterface::open(const AudioDevice_t &device, BufferT *buffer, floa
     outputParams.device = device.deviceId;
     outputParams.suggestedLatency = deviceInfo->defaultLowOutputLatency;
     int bufferFrames = (int)sampleRate / 60;
+
     auto err = Pa_OpenStream(
             &stream,
             nullptr,
@@ -117,7 +147,7 @@ bool PortaudioInterface::open(const AudioDevice_t &device, BufferT *buffer, floa
             buffer);
 
     if (err != PaErrorCode::paNoError) {
-        spdlog::error("Failed to open PortAudio stream. Error code {0}: {1}", err, Pa_GetErrorText(err));
+        spdlog::error("Failed to open PortAudio stream. Device: {0}. Error code {1}: {2}", device.deviceId, err, Pa_GetErrorText(err));
         return false;
     }
 
@@ -130,10 +160,10 @@ bool PortaudioInterface::open(const AudioDevice_t &device, BufferT *buffer, floa
 
     return true;
 }
-template bool PortaudioInterface::open<dsp::stream<dsp::stereo_t>, dsp::stereo_t>(const AudioDevice_t &device, dsp::stream<dsp::stereo_t> *buffer, float sampleRate);
-template bool PortaudioInterface::open<dsp::stream<dsp::mono_t>, dsp::mono_t>(const AudioDevice_t &device, dsp::stream<dsp::mono_t> *buffer, float sampleRate);
+template bool PortaudioStream::open<dsp::stream<dsp::stereo_t>, dsp::stereo_t>(const AudioDevice_t &device, dsp::stream<dsp::stereo_t> *buffer, float sampleRate);
+template bool PortaudioStream::open<dsp::stream<dsp::mono_t>, dsp::mono_t>(const AudioDevice_t &device, dsp::stream<dsp::mono_t> *buffer, float sampleRate);
 
-void PortaudioInterface::close() {
+void PortaudioStream::close() {
     Pa_StopStream(stream);
     Pa_CloseStream(stream);
     stream = nullptr;
