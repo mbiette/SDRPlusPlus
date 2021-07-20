@@ -73,6 +73,66 @@ const char* bandwidthsTxt = "1.75MHz\0"
                             "28MHz\0"
                             "Auto\0";
 
+// Remove the DC spike inspired from https://github.com/ghostop14/gr-correctiq/
+struct IQ {
+    float i;
+    float q;
+};
+
+class CorrectIQ {
+public:
+
+    CorrectIQ():
+        synchronized{false},
+        d_syncWindow{2} // seconds
+    {
+        set_sample_rate(2000000);
+    };
+
+    ~CorrectIQ() = default;
+
+    void set_sample_rate(int sample_rate) {
+        d_sample_rate = sample_rate;
+        d_max_syncSamples = sample_rate * d_syncWindow;
+    }
+
+    void reset_sync() noexcept {
+        synchronized = false;
+        syncCounter = 0;
+        avg_i = 0.0;
+        avg_q = 0.0;
+    };
+
+    void process(int nb_valid_sample, IQ *buffer){
+        for (int i = 0; i < nb_valid_sample; ++i) {
+            IQ &sample = buffer[i];
+            if (!synchronized) {
+                avg_i = ratio * (sample.i - avg_i) + avg_i;
+                avg_q = ratio * (sample.q - avg_q) + avg_q;
+                syncCounter++;
+            }
+            sample.i = sample.i - avg_i;
+            sample.q = sample.q - avg_q;
+        }
+        if (!synchronized && (syncCounter >= d_max_syncSamples)) {
+            synchronized = true;
+        }
+    }
+
+private:
+    float avg_i = 0.0;
+    float avg_q = 0.0;
+    float ratio = 1e-5f;
+
+    int d_sample_rate;
+    int d_syncWindow;
+
+    long syncCounter = 0;
+    bool synchronized = false;
+
+    long d_max_syncSamples;
+};
+
 class HackRFSourceModule : public ModuleManager::Instance {
 public:
     HackRFSourceModule(std::string name) {
@@ -99,6 +159,9 @@ public:
         std::string confSerial = config.conf["device"];
         config.release();
         selectBySerial(confSerial);
+
+        correctIqObj.set_sample_rate(sampleRate);
+        correctIqObj.reset_sync();
 
         sigpath::sourceManager.registerSource("HackRF", &handler);
     }
@@ -155,6 +218,7 @@ public:
         if (!config.conf["devices"].contains(serial)) {
             config.conf["devices"][serial]["sampleRate"] = 2000000;
             config.conf["devices"][serial]["biasT"] = false;
+            config.conf["devices"][serial]["correctIQ"] = false;
             config.conf["devices"][serial]["amp"] = false;
             config.conf["devices"][serial]["lnaGain"] = 0;
             config.conf["devices"][serial]["vgaGain"] = 0;
@@ -166,6 +230,7 @@ public:
         srId = 0;
         sampleRate = 2000000;
         biasT = false;
+        correctIQ = false;
         amp = false;
         lna = 0;
         vga = 0;
@@ -183,6 +248,9 @@ public:
         }
         if (config.conf["devices"][serial].contains("biasT")) {
             biasT = config.conf["devices"][serial]["biasT"];
+        }
+        if (config.conf["devices"][serial].contains("correctIQ")) {
+            correctIQ = config.conf["devices"][serial]["correctIQ"];
         }
         if (config.conf["devices"][serial].contains("amp")) {
             amp = config.conf["devices"][serial]["amp"];
@@ -205,6 +273,8 @@ private:
     static void menuSelected(void* ctx) {
         HackRFSourceModule* _this = (HackRFSourceModule*)ctx;
         core::setInputSampleRate(_this->sampleRate);
+        _this->correctIqObj.set_sample_rate(_this->sampleRate);
+        _this->correctIqObj.reset_sync();
         spdlog::info("HackRFSourceModule '{0}': Menu Select!", _this->name);
     }
 
@@ -244,7 +314,7 @@ private:
         hackrf_set_vga_gain(_this->openDev, _this->vga);
 
         hackrf_start_rx(_this->openDev, callback, _this);
-
+        _this->correctIqObj.reset_sync();
         _this->running = true;
         spdlog::info("HackRFSourceModule '{0}': Start!", _this->name);
     }
@@ -269,6 +339,7 @@ private:
         HackRFSourceModule* _this = (HackRFSourceModule*)ctx;
         if (_this->running) {
             hackrf_set_freq(_this->openDev, freq);
+            _this->correctIqObj.reset_sync();
         }
         _this->freq = freq;
         spdlog::info("HackRFSourceModule '{0}': Tune: {1}!", _this->name, freq);
@@ -283,6 +354,7 @@ private:
         ImGui::SetNextItemWidth(menuWidth);
         if (ImGui::Combo(CONCAT("##_hackrf_dev_sel_", _this->name), &_this->devId, _this->devListTxt.c_str())) {
             _this->selectedSerial = _this->devList[_this->devId];
+            _this->correctIqObj.reset_sync();
             config.acquire();
             config.conf["device"] = _this->selectedSerial;
             config.release(true);
@@ -291,6 +363,8 @@ private:
         if (ImGui::Combo(CONCAT("##_hackrf_sr_sel_", _this->name), &_this->srId, sampleRatesTxt)) {
             _this->sampleRate = sampleRates[_this->srId];
             core::setInputSampleRate(_this->sampleRate);
+            _this->correctIqObj.set_sample_rate(_this->sampleRate);
+            _this->correctIqObj.reset_sync();
             config.acquire();
             config.conf["devices"][_this->selectedSerial]["sampleRate"] = _this->sampleRate;
             config.release(true);
@@ -312,6 +386,7 @@ private:
         if (ImGui::Combo(CONCAT("##_hackrf_bw_sel_", _this->name), &_this->bwId, bandwidthsTxt)) {
             if (_this->running) {
                 hackrf_set_baseband_filter_bandwidth(_this->openDev, _this->bandwidthIdToBw(_this->bwId));
+                _this->correctIqObj.reset_sync();
             }
             config.acquire();
             config.conf["devices"][_this->selectedSerial]["bandwidth"] = _this->bwId;
@@ -327,9 +402,20 @@ private:
             config.release(true);
         }
 
+        if (ImGui::Checkbox(CONCAT("Correct IQ##_hackrf_bt_", _this->name), &_this->correctIQ)) {
+            if (_this->running) {
+                _this->correctIqObj.set_sample_rate(_this->sampleRate);
+                _this->correctIqObj.reset_sync();
+            }
+            config.acquire();
+            config.conf["devices"][_this->selectedSerial]["correctIQ"] = _this->correctIQ;
+            config.release(true);
+        }
+
         if (ImGui::Checkbox(CONCAT("Amp Enabled##_hackrf_amp_", _this->name), &_this->amp)) {
             if (_this->running) {
                 hackrf_set_amp_enable(_this->openDev, _this->amp);
+                _this->correctIqObj.reset_sync();
             }
             config.acquire();
             config.conf["devices"][_this->selectedSerial]["amp"] = _this->amp;
@@ -342,6 +428,7 @@ private:
         if (ImGui::SliderFloatWithSteps(CONCAT("##_hackrf_lna_", _this->name), &_this->lna, 0, 40, 8, "%.0fdB")) {
             if (_this->running) {
                 hackrf_set_lna_gain(_this->openDev, _this->lna);
+                _this->correctIqObj.reset_sync();
             }
             config.acquire();
             config.conf["devices"][_this->selectedSerial]["lnaGain"] = (int)_this->lna;
@@ -354,11 +441,12 @@ private:
         if (ImGui::SliderFloatWithSteps(CONCAT("##_hackrf_vga_", _this->name), &_this->vga, 0, 62, 2, "%.0fdB")) {
             if (_this->running) {
                 hackrf_set_vga_gain(_this->openDev, _this->vga);
+                _this->correctIqObj.reset_sync();
             }
             config.acquire();
             config.conf["devices"][_this->selectedSerial]["vgaGain"] = (int)_this->vga;
             config.release(true);
-        }   
+        }
     }
 
     static int callback(hackrf_transfer* transfer) {
@@ -366,6 +454,9 @@ private:
         int count = transfer->valid_length / 2;
         int8_t* buffer = (int8_t*)transfer->buffer;
         volk_8i_s32f_convert_32f((float*)_this->stream.writeBuf, buffer, 128.0f, count*2);
+        if(_this->correctIQ) {
+            _this->correctIqObj.process(count, (IQ *)_this->stream.writeBuf);
+        }
         if (!_this->stream.swap(count)) { return -1; }
         return 0;
     }
@@ -383,6 +474,8 @@ private:
     int srId = 0;
     int bwId = 16;
     bool biasT = false;
+    bool correctIQ = false;
+    CorrectIQ correctIqObj;
     bool amp = false;
     float lna = 0;
     float vga = 0;
