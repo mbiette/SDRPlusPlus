@@ -2,15 +2,6 @@
 #include <spdlog/spdlog.h>
 #include <dsp/processing.h>
 
-const std::array<float, 6> POSSIBLE_SAMPLE_RATES = {
-        48000.0f,
-        44100.0f,
-        24000.0f,
-        22050.0f,
-        12000.0f,
-        11025.0f
-};
-
 PortaudioInterface::PortaudioInterface() {
     spdlog::info("Initializing PortAudio. Version: {0}", Pa_GetVersionText());
     auto err = Pa_Initialize();
@@ -73,7 +64,12 @@ std::vector<AudioDevice_t> PortaudioInterface::getDeviceList() {
                 std::string(hostApiInfo->name).append(" - ").append(deviceInfo->name),
                 deviceId,
                 std::min<int>(deviceInfo->maxOutputChannels, 2)};
+
         dev.sampleRates = std::move(getValidSampleRates(dev.channels, deviceId, deviceInfo->defaultLowOutputLatency));
+
+        auto defaultSampleRate = std::find(dev.sampleRates.cbegin(), dev.sampleRates.cend(), deviceInfo->defaultSampleRate);
+        dev.sampleRateId = std::distance(dev.sampleRates.cbegin(), defaultSampleRate);
+
         if(dev.sampleRates.empty()) continue;
         devices.push_back(dev);
     }
@@ -86,17 +82,23 @@ std::vector<float> PortaudioInterface::getValidSampleRates(int channelCount, int
 
     PaStreamParameters outputParams;
     outputParams.sampleFormat = paFloat32;
-    outputParams.hostApiSpecificStreamInfo = NULL;
-    for (const auto sampleRate: POSSIBLE_SAMPLE_RATES) {
-        outputParams.channelCount = channelCount;
-        outputParams.device = deviceId;
-        outputParams.suggestedLatency = latency;
-        auto err = Pa_IsFormatSupported(NULL, &outputParams, sampleRate);
-        if (err != paFormatIsSupported) {
-            continue;
-        }
-        validSampleRates.push_back(sampleRate);
+    outputParams.hostApiSpecificStreamInfo = nullptr;
+    outputParams.channelCount = channelCount;
+    outputParams.device = deviceId;
+    outputParams.suggestedLatency = latency;
+
+    for (int sampleRate = 12000; sampleRate < 200000; sampleRate += 12000) {
+        auto err = Pa_IsFormatSupported(nullptr, &outputParams, sampleRate);
+        if (err != paFormatIsSupported) continue;
+        validSampleRates.emplace_back(sampleRate);
     }
+    for (int sampleRate = 11025; sampleRate < 192000; sampleRate += 11025) {
+        auto err = Pa_IsFormatSupported(nullptr, &outputParams, sampleRate);
+        if (err != paFormatIsSupported) continue;
+        validSampleRates.emplace_back(sampleRate);
+    }
+
+    std::sort(validSampleRates.begin(), validSampleRates.end());
 
     return validSampleRates;
 }
@@ -157,6 +159,9 @@ bool PortaudioStream::open(const AudioDevice_t &device, BufferT *buffer, float s
         spdlog::error("Failed to start PortAudio stream. Error code {0}: {1}", err, Pa_GetErrorText(err));
         return false;
     }
+
+    auto streamInfo = Pa_GetStreamInfo(stream);
+    spdlog::info("[PortAudio] Stream opened: latency={0} (suggested={1}), sample_rate={2}", streamInfo->outputLatency, deviceInfo->defaultLowOutputLatency, streamInfo->sampleRate);
 
     return true;
 }
